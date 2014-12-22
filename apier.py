@@ -11,6 +11,29 @@ __import__('BaseHTTPServer').BaseHTTPRequestHandler.address_string = lambda x:x.
 from threading import Thread
 from optparse import OptionParser
 
+class Logger(object):
+    def __init__(self, filename="./http.log", foreground=False):
+        self.foreground = foreground
+        self.terminal = sys.stdout
+        self.log = open(filename, "a")
+
+    def write(self, message):
+        if self.foreground:
+            self.terminal.write(message)
+        self.log.write(message)
+        self.terminal.flush()
+        self.log.flush()
+        
+
+LOGLEVELS = {
+    "silent"    : 0,
+    "error"     : 1,
+    "warn"      : 2,
+    "info"      : 3,
+    "debug"     : 4
+}
+
+LOGLEVEL = LOGLEVELS['debug']
 
 PARSER = OptionParser()
 
@@ -28,22 +51,16 @@ PARSER.add_option('-f', '--foreground', dest='foreground',
                         action='store_true'
                         )
 
+PARSER.add_option('-l', '--loglevel', dest='forcedloglevel',
+                        help='specifies loglevel, overrides loglevel from config file. available levels: %s' % ','.join(LOGLEVELS.keys()),
+                        default=None
+                        )
+
 OPTIONS, ARGS = PARSER.parse_args()
 
 CONFIGFILE = OPTIONS.configfile
 
 CONFIG = ConfigParser.RawConfigParser(allow_no_value=True)
-
-LOGLEVELS = {
-    "silent"    : 0,
-    "error"     : 1,
-    "warn"      : 2,
-    "info"      : 3,
-    "debug"     : 4
-}
-
-
-LOGLEVEL = LOGLEVELS['debug']
 
 HASHER = hashlib.md5()
 
@@ -59,11 +76,12 @@ try:
     BINDIP=CONFIG.get('daemon', 'bindip')
     BINDPORT=int(CONFIG.get('daemon', 'bindport'))
 
+    HTTPACCESSLOGFILE=CONFIG.get('daemon', 'httpaccesslogfile')
     LOGFILE=CONFIG.get('daemon', 'logfile')
+
     LOGLEVEL=LOGLEVELS[CONFIG.get('daemon', 'loglevel')]
 
     MODULES_DIR=CONFIG.get('daemon', 'modules_dir')
-
 
 except Exception, e:
     print '[ERR] Unable to find config argument: %s' % e
@@ -72,6 +90,12 @@ except Exception, e:
 if (OPTIONS.testconfig):
     print '[OK] Config seems to be valid'
     sys.exit(0)
+
+
+sys.stderr = Logger(HTTPACCESSLOGFILE, OPTIONS.foreground)
+
+if OPTIONS.forcedloglevel != None:
+    LOGLEVEL=LOGLEVELS[OPTIONS.forcedloglevel]
 
 
 def WriteLog(logstring, loglevel='info', thread='main'):
@@ -93,6 +117,7 @@ def WriteLog(logstring, loglevel='info', thread='main'):
         if OPTIONS.foreground or loglevel.upper() == 'ERROR' :
             print p_logstring,
             sys.stdout.flush()
+            # sys.stderr.flush()
 
 
 
@@ -224,9 +249,6 @@ class BottleServer(Thread):
 
     def run(self):
         app.run(host=BINDIP, port=BINDPORT, debug=False, server='paste')
-        
-
-
 
         
 # while True:
