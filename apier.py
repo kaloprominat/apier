@@ -74,69 +74,6 @@ if (OPTIONS.testconfig):
     sys.exit(0)
 
 
-def ParseRequest(self, bottle, kwargs):
-    data = {
-            "bottle.request": bottle.request,
-            "bottle.response": bottle.response,
-            "http_headers":[],
-            "get": [],
-            "post": [],
-            "path": None,
-            "matched_route" : None,
-            "matched_route_method" : None,
-            "variables": kwargs,
-            "post_body" : None
-            }
-    data['path'] = bottle.request.path
-    data['matched_route'] = bottle.request.route.rule
-    data['matched_route_method'] = bottle.request.route.method
-
-    for header in bottle.request.headers:
-        data['http_headers'].append({header:bottle.request.headers[header]})
-
-    for getitem in bottle.request.query:
-        data['get'].append({getitem: bottle.request.query.get(getitem)})
-
-    data['post_body'] = bottle.request.body.read()
-
-    for postitem in bottle.request.POST:
-        data['post'].append({postitem:bottle.request.POST.get(postitem)})
-
-    return data
-
-
-def ModifyHeader(self, response, parametrs):
-    if parametrs.has_key('headers'):
-        for header in parametrs['headers']:
-            if header[0] == 'Content-Type':
-                response.content_type = header[1]
-            response.set_header(header[0], header[1])
-    if parametrs.has_key('status'):
-        response.status = parametrs['status']
-
-
-def ReturnResponse(callback, data):
-    return_data = {}
-    try:
-        return_data['data'] = callback(data)
-    except Exception as e:
-        WriteLog("Error '%s' in module callback '%s'" % (e, callback), 'error')
-        return_data['data'] = None
-        return_data['status'] = 1
-        return_data['code'] = 1
-        return_data['message'] = "Error '%s' in module callback '%s'" % (e, callback)
-    else:
-        return_data['status'] = 0
-    try:
-        json.dumps(return_data['data'])
-    except Exception as e:
-        WriteLog("Data returned by module callback '%s' is not suitable with error '%s'" % ( callback , e.__str__() ), 'error')
-        return_data['data'] = None
-        return_data['status'] = 1
-        return_data['code'] = 2
-        return_data['message'] = "Data returned by module callback '%s' is not suitable with error '%s'" % ( callback , e.__str__() )
-    return return_data
-
 def WriteLog(logstring, loglevel='info', thread='main'):
     global LOGFILE
     global OPTIONS
