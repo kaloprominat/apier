@@ -4,15 +4,16 @@
 from apiermodule import apiermodule
 
 name = 'example2'
+
 routes = {
-        '/test2'    :   {'method'   :   'POST' },
-        '/test2/'   :   {'method'   :   'GET'},
+        '/test2'    :   {'method'   :   'GET' },
+        '/test2/'   :   {'method'   :   'POST'},
         '/test2/<name>'   :   {'method'   :   'ANY'}
     
         }
 
-
 class apimodule(apiermodule):
+
     """docstring for apimodule"""
 
     def __init__(self, **kwargs):
@@ -21,32 +22,32 @@ class apimodule(apiermodule):
         self.routes = routes
 
         self.routes['/test2']['function'] = self.func1
-        self.routes['/test2/']['function'] = self.func2
+        self.routes['/test2/']['function'] = self.func1
         self.routes['/test2/<name>']['function'] = self.func2
-        # self.routes['/test2/<name>']['function'] = 123
-
 
         super(apimodule, apimodule).__init__(self, **kwargs)
 
-
-
-
-    def func2(self, Request):
-
-        if Request['variables']['name'] == 'suka':
-            self.ModifyResponseHeader({'status':201})
-
-        return 'pp[a'
-
     def func1(self, Request):
 
-        # Request['bottle.request'] = None
-        # Request['bottle.response'] = None
-
-        # a = 1 / 0
+        Request['bottle.request'] = None
+        Request['bottle.response'] = None
 
         return Request
 
+    def func2(self, Request):
+
+        if Request['variables']['name'] == 'specialname':
+            self.ModifyResponseHeader({'status':201})
+
+        return 'OK: 201 created'
+
 if __name__ == '__main__':
-    pass    
+
+    import bottle
+
+    bottleapp = bottle.Bottle()
+
+    module = apimodule(bottleapp=bottleapp)
+
+    bottleapp.run(host='0.0.0.0', port='8080', debug=True, server='paste')
 
