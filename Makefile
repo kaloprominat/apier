@@ -1,4 +1,4 @@
 all: sdist
     
 sdist:
-    python setup.py sdist
+	python setup.py sdist
