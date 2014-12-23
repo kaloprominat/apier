@@ -7,11 +7,16 @@ class apiermodule(object):
 
     """base class for constructing modules for apier"""
 
-    def __init__(self, bottleapp):
+    def __init__(self, **kwargs):
         super(apiermodule, self).__init__()
-        self.bottleapp = bottleapp
+        
+        self.bottleapp = kwargs.get('bottleapp')
+        self.WriteLog = kwargs.get('WriteLog')
+
         if self.WriteLog == None:
             self.WriteLog = self.local_writelog
+
+        self.BindRoutes()
 
     def local_writelog(self, logstring, loglevel='info', thread='module' ):
 

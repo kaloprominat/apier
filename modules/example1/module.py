@@ -15,23 +15,23 @@ routes = {
 class apimodule(apiermodule):
     """docstring for apimodule"""
 
-    def __init__(self, bottleapp=None, WriteLog=None):
-
-        self.WriteLog = WriteLog
-
-        super(apimodule, apimodule).__init__(self, bottleapp)
+    def __init__(self, **kwargs):
 
         self.name = name
         self.routes = routes
 
-        self.bottleapp = bottleapp
 
         self.routes['/test1']['function'] = self.func1
         self.routes['/test1/']['function'] = self.func1
         # self.routes['/test1/<name>']['function'] = self.func2
         self.routes['/test1/<name>']['function'] = 123
+        
 
-        self.BindRoutes()
+
+        super(apimodule, apimodule).__init__(self, **kwargs)
+
+
+        
 
     def func2(self, Request):
 
