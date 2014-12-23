@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import bottle, json
+import bottle, json, datetime
 
 class apiermodule(object):
 
@@ -10,6 +10,16 @@ class apiermodule(object):
     def __init__(self, bottleapp):
         super(apiermodule, self).__init__()
         self.bottleapp = bottleapp
+        if self.WriteLog == None:
+            self.WriteLog = self.local_writelog
+
+    def local_writelog(self, logstring, loglevel='info', thread='module' ):
+
+        dt = datetime.datetime.now()
+
+        p_logstring = "%s[%s]: <%s> %s \n" % (dt.strftime("%Y-%m-%d %H:%M:%S"), loglevel.upper(), thread, logstring )
+
+        print p_logstring
 
     def ProccessRoute(self, **kwargs):
         

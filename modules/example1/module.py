@@ -50,5 +50,9 @@ class apimodule(apiermodule):
         return Request
 
 if __name__ == '__main__':
-    pass    
+    import bottle
+    bottleapp = bottle.Bottle()
+    module = apimodule(bottleapp=bottleapp, WriteLog=None)
+
+    bottleapp.run(host='0.0.0.0', port='8080', debug=True, server='paste')
 
