@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import bottle, ConfigParser, sys, thread, imp, os, json, datetime, signal, hashlib
+import bottle, ConfigParser, sys, thread, imp, os, json, datetime, signal
 
 #   This hack is for disabling reverse DNS lookups
 
@@ -61,8 +61,6 @@ OPTIONS, ARGS = PARSER.parse_args()
 CONFIGFILE = OPTIONS.configfile
 
 CONFIG = ConfigParser.RawConfigParser(allow_no_value=True)
-
-HASHER = hashlib.md5()
 
 
 try:
@@ -141,9 +139,8 @@ for module_dir in os.listdir(MODULES_DIR):
         if os.path.exists(module_path):
             WriteLog('Found module at path %s' % module_path, 'debug')
             imp_module = None
-            HASHER.update(module_path)
             try:
-                imp_module = imp.load_source(HASHER.digest(), module_path)
+                imp_module = imp.load_source(module_path, module_path)
             except Exception as e:
                 WriteLog('Error loading module at path %s : %s' % (module_path, e), 'error')
             else:
