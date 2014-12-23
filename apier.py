@@ -23,7 +23,7 @@ class Logger(object):
         self.log.write(message)
         self.terminal.flush()
         self.log.flush()
-        
+
 
 LOGLEVELS = {
     "silent"    : 0,
@@ -39,7 +39,7 @@ PARSER = OptionParser()
 
 PARSER.add_option('-c', '--config', dest='configfile',
                         help='configuration file path',
-                        default='/etc/caspersuite-licenses-daemon/daemon.conf'
+                        default='/etc/apier/daemon.conf'
                         )
 PARSER.add_option('-t', '--test-config', dest='testconfig',
                         help='do not run, just test specified config',
