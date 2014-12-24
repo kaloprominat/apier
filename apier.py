@@ -245,7 +245,7 @@ class BottleServer(Thread):
         self.bottleapp=bottleapp
 
     def run(self):
-        self.bottleapp.run(host=BINDIP, port=BINDPORT, debug=False, server='paste')
+        bottle.run(app=self.bottleapp, host=BINDIP, port=BINDPORT, server='paste')
 
         
 # while True:
