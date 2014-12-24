@@ -78,8 +78,13 @@ class apiermodule(object):
                 "post_body" : None
                 }
         data['path'] = bottle.request.path
-        data['matched_route'] = bottle.request.route.rule
-        data['matched_route_method'] = bottle.request.route.method
+
+        # if bottle.request.has_key('route.handle'):
+        data['matched_route'] = bottle.request['route.handle'].rule
+        data['matched_route_method'] = bottle.request['route.handle'].method
+        # else:
+            # data['matched_route'] = bottle.request.route.rule
+            # data['matched_route_method'] = bottle.request.route.method
 
         for header in bottle.request.headers:
             data['http_headers'].append({header:bottle.request.headers[header]})
