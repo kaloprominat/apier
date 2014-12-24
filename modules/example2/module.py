@@ -45,9 +45,11 @@ if __name__ == '__main__':
 
     import bottle
 
+    bottle.debug(True)
+
     bottleapp = bottle.Bottle()
 
     module = apimodule(bottleapp=bottleapp)
 
-    bottleapp.run(host='0.0.0.0', port='8080', debug=True, server='paste')
+    bottle.run(app=bottleapp, host='0.0.0.0', port='8080', server='paste')
 

@@ -184,6 +184,10 @@ if __name__ == '__main__':
 
     import bottle
 
+    #   Turning on debug
+
+    bottle.debug(True)
+
     bottleapp = bottle.Bottle()
 
     #   Initializing module and pass to it bottle application and 
@@ -192,7 +196,7 @@ if __name__ == '__main__':
 
     #   Run application
 
-    bottleapp.run(host='0.0.0.0', port='8080', debug=True, server='paste')
+    bottle.run(app=bottleapp, host='0.0.0.0', port='8080', server='paste')
 
 
 #   That's all. Clear module example without commentary you may find in example2 module
