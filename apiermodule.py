@@ -3,6 +3,8 @@
 
 import bottle, json, datetime
 
+import traceback
+
 class apiermodule(object):
 
     """base class for constructing modules for apier"""
@@ -41,6 +43,7 @@ class apiermodule(object):
             result['data'] = None
             result['message'] = "Unhandled error '%s' in module function %s" % (e, self.routes[Request['matched_route']]['function'])
             self.WriteLog("%s %s: Unhandled error '%s' in module function %s" % ( Request['bottle.request'].method,Request['matched_route'] , e, self.routes[Request['matched_route']]['function']), 'error', self.name)
+            self.WriteLog('%s' % traceback.format_exc(e), 'error', self.name )
         else:
             result['data'] = Response
 
@@ -53,7 +56,7 @@ class apiermodule(object):
             result['message'] = 'Module function %s returned unserializable data: \'%s\'' % (self.routes[Request['matched_route']]['function'], e)
 
             self.WriteLog("%s %s: Module function %s returned unserializable data: '%s'" % ( Request['bottle.request'].method, Request['matched_route'] , self.routes[Request['matched_route']]['function'],e), 'error', self.name)
-
+            self.WriteLog('%s' % traceback.format_exc(e), 'error', self.name )
 
         return result
 

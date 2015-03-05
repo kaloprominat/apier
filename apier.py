@@ -1,15 +1,41 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import bottle, ConfigParser, sys, thread, imp, os, json, datetime, signal
+
+#   Some general imports
+
+import sys, thread, imp, os, json
+import bottle
+import ConfigParser, datetime, signal
+import traceback
+
+#   This part for http access logging
+
+from requestlogger import WSGILogger, ApacheFormatter
+from logging.handlers import TimedRotatingFileHandler
 
 #   This hack is for disabling reverse DNS lookups
 
 __import__('BaseHTTPServer').BaseHTTPRequestHandler.address_string = lambda x:x.client_address[0]
 
+#   For threading and options parsing
 
 from threading import Thread
 from optparse import OptionParser
+
+#   Class for future colorizing
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+#   Logger class for http server
 
 class Logger(object):
     def __init__(self, filename="./http.log", foreground=False):
@@ -24,6 +50,8 @@ class Logger(object):
         self.terminal.flush()
         self.log.flush()
 
+
+#   Global loglevels
 
 LOGLEVELS = {
     "silent"    : 0,
@@ -63,10 +91,13 @@ CONFIGFILE = OPTIONS.configfile
 CONFIG = ConfigParser.RawConfigParser(allow_no_value=True)
 
 
+#   Trying read config file
+
 try:
     CONFIG.read(CONFIGFILE)
 except Exception, e:
     print '[ERR] Error loading config file: %s' % e
+    print traceback.format_exc(e)
     sys.exit(1)
 
 try:
@@ -83,6 +114,7 @@ try:
 
 except Exception, e:
     print '[ERR] Unable to find config argument: %s' % e
+    print traceback.format_exc(e)
     sys.exit(2)
 
 if (OPTIONS.testconfig):
@@ -90,7 +122,7 @@ if (OPTIONS.testconfig):
     sys.exit(0)
 
 
-sys.stderr = Logger(HTTPACCESSLOGFILE, OPTIONS.foreground)
+sys.stderr = Logger(LOGFILE, OPTIONS.foreground)
 
 if OPTIONS.forcedloglevel != None:
     LOGLEVEL=LOGLEVELS[OPTIONS.forcedloglevel]
@@ -106,6 +138,7 @@ def WriteLog(logstring, loglevel='info', thread='main'):
 
     p_logstring = "%s[%s]: <%s> %s \n" % (dt.strftime("%Y-%m-%d %H:%M:%S"), loglevel.upper(), thread, logstring )
 
+
     if LOGLEVELS[loglevel.lower()] <= LOGLEVEL:
 
         plog = open(LOGFILE,'a')
@@ -117,6 +150,10 @@ def WriteLog(logstring, loglevel='info', thread='main'):
             sys.stdout.flush()
             # sys.stderr.flush()
 
+    if thread != 'main':
+        plog = open( '%s/%s.log' % ( os.path.dirname(LOGFILE), thread ), 'a')
+        plog.write(p_logstring)
+        plog.close()
 
 
 if not os.path.exists(MODULES_DIR):
@@ -143,6 +180,7 @@ for module_dir in os.listdir(MODULES_DIR):
                 imp_module = imp.load_source(module_path, module_path)
             except Exception as e:
                 WriteLog('Error loading module at path %s : %s' % (module_path, e), 'error')
+                WriteLog('%s' % traceback.format_exc(e), 'error' )
             else:
                 if not hasattr(imp_module, 'name'):
                     WriteLog('Malformed module at %s: no name atribute presented' % module_path, 'error' )
@@ -216,6 +254,7 @@ for module in MODULES:
     except Exception as e:
 
         WriteLog('error initializing module %s: %s' % (module['module'], e), 'error')
+        WriteLog('%s' % traceback.format_exc(e), 'error' )
 
     else:
 
@@ -245,11 +284,17 @@ class BottleServer(Thread):
         self.bottleapp=bottleapp
 
     def run(self):
-        bottle.run(app=self.bottleapp, host=BINDIP, port=BINDPORT, server='paste')
+        bottle.run(app=self.bottleapp, host=BINDIP, port=BINDPORT, server='paste', quiet=True)
 
-        
+
+#   Defining loggin things
+
+handlers = [ TimedRotatingFileHandler(HTTPACCESSLOGFILE, 'd', 7) , ]
+loggedapp = WSGILogger(app, handlers, ApacheFormatter())
+
+       
 # while True:
-bTh = BottleServer(app)
+bTh = BottleServer(loggedapp)
 bTh.daemon = False
 bTh.run()
 
