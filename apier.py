@@ -4,24 +4,35 @@
 
 #   Some general imports
 
-import sys, thread, imp, os, json
+import sys
+import thread   # for threading purposes  
+import imp      # for loading modules dynamically
+import os
+import json
+import ConfigParser     # for parsing config
+import datetime
+import signal       # for future signal support
+import traceback    # for detalaized errors in runtime
+
+#   For threading and options parsing
+
+from threading import Thread
+from optparse import OptionParser
+
+# main web server framework
+
 import bottle
-import ConfigParser, datetime, signal
-import traceback
 
 #   This part for http access logging
 
 from requestlogger import WSGILogger, ApacheFormatter
 from logging.handlers import TimedRotatingFileHandler
 
+
 #   This hack is for disabling reverse DNS lookups
 
 __import__('BaseHTTPServer').BaseHTTPRequestHandler.address_string = lambda x:x.client_address[0]
 
-#   For threading and options parsing
-
-from threading import Thread
-from optparse import OptionParser
 
 #   Class for future colorizing
 
