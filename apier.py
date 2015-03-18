@@ -200,7 +200,7 @@ if CONF_DIR != None and os.path.isdir(CONF_DIR):
                 CONFIGS[conf_file] = {}
 
                 for section in CONFIG_D.sections():
-                    CONFIGS[conf_file][section] = map( lambda x: {x[0]: x[1]} , CONFIG_D.items(section))
+                    CONFIGS[conf_file][section] = map( lambda x: {x[0]: x[1]} , CONFIG_D.items(section))[0]
 
                 WriteLog('Found and processed config %s with sections %s' % ( conf_file , CONFIG_D.sections().__str__() ), 'info' )
 
