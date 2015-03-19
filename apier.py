@@ -34,6 +34,11 @@ from logging.handlers import TimedRotatingFileHandler
 __import__('BaseHTTPServer').BaseHTTPRequestHandler.address_string = lambda x:x.client_address[0]
 
 
+#   This is for disabling warnings
+
+import warnings
+warnings.filterwarnings("ignore")
+
 #   Class for future colorizing
 
 class bcolors:
@@ -123,6 +128,12 @@ try:
 
     MODULES_DIR=CONFIG.get('daemon', 'modules_dir')
 
+    if 'conf_dir' in CONFIG.options('daemon'):
+
+        CONF_DIR=CONFIG.get('daemon', 'conf_dir')
+    else:
+        CONF_DIR=None
+
 except Exception, e:
     print '[ERR] Unable to find config argument: %s' % e
     print traceback.format_exc(e)
@@ -170,6 +181,40 @@ def WriteLog(logstring, loglevel='info', thread='main'):
 if not os.path.exists(MODULES_DIR):
     WriteLog('no modules directory found at %s' % MODULES_DIR, 'error')
     sys.exit(1)
+
+WriteLog('Apier started', 'info')
+
+CONFIGS = {}
+
+#   Listing conf.d directory
+
+if CONF_DIR != None and os.path.isdir(CONF_DIR):
+
+    WriteLog('Found conf.d directory at path %s' % CONF_DIR, 'info')
+
+    for conf_file in os.listdir(CONF_DIR):
+        conf_file_path = "%s/%s" % (CONF_DIR, conf_file)
+        if not os.path.isfile(conf_file_path):
+            WriteLog('Found item at %s is not a file' % conf_file_path, 'warn')
+        else:
+            CONFIG_D = ConfigParser.RawConfigParser(allow_no_value=True)
+            try:
+                CONFIG_D.read(conf_file_path)
+            except Exception as e:
+                WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
+            else:
+                CONFIGS[conf_file] = {}
+
+                for section in CONFIG_D.sections():
+                    CONFIGS[conf_file][section] = {}
+
+                    for item in CONFIG_D.items(section):
+                        CONFIGS[conf_file][section][item[0]] = item[1]
+                        
+                    # CONFIGS[conf_file][section] = map( lambda x: {x[0]: x[1]} , CONFIG_D.items(section))[0]
+
+                WriteLog('Found and processed config %s with sections %s' % ( conf_file , CONFIG_D.sections().__str__() ), 'info' )
+
 
 app = bottle.Bottle()
 
@@ -260,7 +305,8 @@ for module in MODULES:
 
     try:
         # instance = module['module'].apimodule(ParseReiquest, ModifyHeader, ReturnResponse, WriteLog, **kwargs)
-        instance = module['module'].apimodule(bottleapp=app, WriteLog=WriteLog)
+
+        instance = module['module'].apimodule(bottleapp=app, WriteLog=WriteLog, configs = CONFIGS)
 
     except Exception as e:
 

@@ -14,6 +14,7 @@ class apiermodule(object):
         
         self.bottleapp = kwargs.get('bottleapp')
         self.WriteLog = kwargs.get('WriteLog')
+        self.apier_configs = kwargs.get('configs')
 
         if self.WriteLog == None:
             self.WriteLog = self.local_writelog
