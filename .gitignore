@@ -52,3 +52,7 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# Custom things
+
+casper.py
+_ex_*
