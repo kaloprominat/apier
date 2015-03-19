@@ -34,6 +34,11 @@ from logging.handlers import TimedRotatingFileHandler
 __import__('BaseHTTPServer').BaseHTTPRequestHandler.address_string = lambda x:x.client_address[0]
 
 
+#   This is for disabling warnings
+
+import warnings
+warnings.filterwarnings("ignore")
+
 #   Class for future colorizing
 
 class bcolors:
