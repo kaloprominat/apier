@@ -52,6 +52,11 @@ class apimodule(apiermodule):
 
         super(apimodule, apimodule).__init__(self, **kwargs)
 
+        #   After that, we have available configs variable
+
+        self.configs = self.apier_configs
+
+        self.WriteLog('configs: %s' % self.configs.__str__(), 'info', self.name)
 
     #   First function func1 process requests for first to paths /test1 and /test1/
     #   baseclass apiermodule passes Request dict to function with all request data
@@ -127,6 +132,7 @@ class apimodule(apiermodule):
 
         Request['bottle.request'] = None
         Request['bottle.response'] = None
+
 
         return Request
 
