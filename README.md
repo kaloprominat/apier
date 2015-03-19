@@ -1,6 +1,10 @@
 apier
 =====
 
+Requirements:
+
+* python-bottle
+
 To start developing apier module:
 
 1. git clone https://github.com/kaloprominat/apier.git ./apier
