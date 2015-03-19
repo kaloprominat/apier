@@ -282,29 +282,7 @@ INSTANCES = []
 
 for module in MODULES:
 
-    # kwargs = {}
-
-    # if hasattr(module['module'], 'requirements'):
-    #     if 'yadb' in module['module'].requirements:
-
-    #         WriteLog('found dependency for module %s: %s' %(module['module'], 'yadb'), 'info')
-
-    #         if module['module'].requirements['yadb'].has_key('db'):
-    #             db=module['module'].requirements['yadb']['db']
-    #         else:
-    #             db='jamfsoftware'
-
-    #         try:
-    #             yadb = yadb.yadb(user=YADBUSER, host=YADBHOST, password=YADBPASSWORD, db=db)
-    #         except yadb.yadbError as e:
-    #             WriteLog('error creating yadb: %s for module %s, skipping module' % (e, module['module']), 'error')
-    #             continue
-    #         else:
-    #             kwargs['yadb'] = yadb
-
-
     try:
-        # instance = module['module'].apimodule(ParseReiquest, ModifyHeader, ReturnResponse, WriteLog, **kwargs)
 
         instance = module['module'].apimodule(bottleapp=app, WriteLog=WriteLog, configs = CONFIGS)
 
@@ -316,10 +294,6 @@ for module in MODULES:
     else:
 
         WriteLog('successfuly initialized module %s' % module['module'])
-
-        # for route in instance.routes:
-        #     bottle.route(route['path'], method=route["method"])(instance.ProccessRoute)
-        #     WriteLog('module %s bound route %s' % (instance.name, route['path']))
 
         INSTANCES.append(instance)
 
