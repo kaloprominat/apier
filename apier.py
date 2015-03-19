@@ -182,6 +182,7 @@ if not os.path.exists(MODULES_DIR):
     WriteLog('no modules directory found at %s' % MODULES_DIR, 'error')
     sys.exit(1)
 
+WriteLog('Apier started', 'info')
 
 CONFIGS = {}
 
