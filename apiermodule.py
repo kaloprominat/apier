@@ -13,13 +13,20 @@ class apiermodule(object):
         super(apiermodule, self).__init__()
         
         self.bottleapp = kwargs.get('bottleapp')
-        self.WriteLog = kwargs.get('WriteLog')
+        self.active_writelog = kwargs.get('WriteLog')
         self.apier_configs = kwargs.get('configs')
 
-        if self.WriteLog == None:
-            self.WriteLog = self.local_writelog
+        self.default_result = { 'status' : 0, 'code' : 0, 'data': None, 'message': None }
+        self.operational_result = None
+
+        if self.active_writelog == None:
+            self.active_writelog = self.local_writelog
 
         self.BindRoutes()
+
+    def WriteLog(self, logstring, loglevel='info', thread='module' ):
+        self.active_writelog(logstring, loglevel, self.name)
+
 
     def local_writelog(self, logstring, loglevel='info', thread='module' ):
 
@@ -34,11 +41,13 @@ class apiermodule(object):
         Request = self.ParseRequest(kwargs)
         Response = None
 
-        result = { 'status' : 0, 'code' : 0, 'data': None, 'message': None }
+        self.operational_result = self.default_result.copy()
 
         try:
             Response = self.routes[Request['matched_route']]['function'](Request)
+            result = self.operational_result
         except Exception as e:
+            result = self.operational_result
             result['status'] = 1
             result['code'] = 1
             result['data'] = None
@@ -115,4 +124,9 @@ class apiermodule(object):
         if parametrs.has_key('status'):
             response.status = parametrs['status']
 
+    def ModifyResponseData(self, parametrs):
+
+        response_data = self.operational_result
+        for item in parametrs:
+            response_data[item] = parametrs[item]
 
