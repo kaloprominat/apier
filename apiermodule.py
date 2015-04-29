@@ -24,8 +24,11 @@ class apiermodule(object):
 
         self.BindRoutes()
 
-    def WriteLog(self, logstring, loglevel='info', thread='module' ):
-        self.active_writelog(logstring, loglevel, self.name)
+    def WriteLog(self, logstring, loglevel='info', thread=None ):
+        if thread == None:
+            self.active_writelog(logstring, loglevel, self.name)
+        else:
+            self.active_writelog(logstring, loglevel, thread)
 
 
     def local_writelog(self, logstring, loglevel='info', thread='module' ):
