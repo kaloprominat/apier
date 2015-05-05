@@ -21,7 +21,7 @@ Options:
 
 To start apier in debug mode and foreground, perform
 
-```python -c ./daemon.conf -f -l debug```
+```python apier.py -c ./daemon.conf -f -l debug```
 
 To start developing apier module:
 
