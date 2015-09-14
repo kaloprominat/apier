@@ -24,6 +24,8 @@ class apiermodule(object):
 
         self.BindRoutes()
 
+        self.ResponseType = 'default'
+
     def WriteLog(self, logstring, loglevel='info', thread=None ):
         if thread == None:
             self.active_writelog(logstring, loglevel, self.name)
@@ -71,7 +73,11 @@ class apiermodule(object):
             self.WriteLog("%s %s: Module function %s returned unserializable data: '%s'" % ( Request['bottle.request'].method, Request['matched_route'] , self.routes[Request['matched_route']]['function'],e), 'error', self.name)
             self.WriteLog('%s' % traceback.format_exc(e), 'error', self.name )
 
-        return result
+        if self.ResponseType == 'default':
+            return result
+        else:
+            self.ResponseType = 'default'
+            return result['data']
 
     def BindRoutes(self):
         for route in self.routes:
@@ -132,4 +138,13 @@ class apiermodule(object):
         response_data = self.operational_result
         for item in parametrs:
             response_data[item] = parametrs[item]
+
+    def SetResposeTypeCustom(self):
+
+        self.ResponseType = 'custom'
+
+    def SetResponseTypeDefault(self):
+
+        self.ResponseType = 'default'
+
 
