@@ -197,24 +197,36 @@ if CONF_DIR != None and os.path.isdir(CONF_DIR):
         if not os.path.isfile(conf_file_path):
             WriteLog('Found item at %s is not a file' % conf_file_path, 'warn')
         else:
-            CONFIG_D = ConfigParser.RawConfigParser(allow_no_value=True)
-            try:
-                CONFIG_D.read(conf_file_path)
-            except Exception as e:
-                WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
-            else:
-                CONFIGS[conf_file] = {}
 
-                for section in CONFIG_D.sections():
-                    CONFIGS[conf_file][section] = {}
+            if '.conf' in conf_file_path:
 
-                    for item in CONFIG_D.items(section):
-                        CONFIGS[conf_file][section][item[0]] = item[1]
-                        
-                    # CONFIGS[conf_file][section] = map( lambda x: {x[0]: x[1]} , CONFIG_D.items(section))[0]
+                CONFIG_D = ConfigParser.RawConfigParser(allow_no_value=True)
+                try:
+                    CONFIG_D.read(conf_file_path)
+                except Exception as e:
+                    WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
+                else:
+                    CONFIGS[conf_file] = {}
 
-                WriteLog('Found and processed config %s with sections %s' % ( conf_file , CONFIG_D.sections().__str__() ), 'info' )
+                    for section in CONFIG_D.sections():
+                        CONFIGS[conf_file][section] = {}
 
+                        for item in CONFIG_D.items(section):
+                            CONFIGS[conf_file][section][item[0]] = item[1]
+
+                    WriteLog('Found and processed config %s with sections %s' % ( conf_file , CONFIG_D.sections().__str__() ), 'info' )
+
+            if '.json' in conf_file_path:
+
+                try:
+                    with open(conf_file_path) as data_file:    
+                        CONFIG_D = json.load(data_file)
+                except Exception as e:
+                    WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
+                else:
+                    CONFIGS[conf_file] = CONFIG_D
+
+                    WriteLog('Found and processed json config %s' %  conf_file, 'info' )
 
 app = bottle.Bottle()
 
