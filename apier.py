@@ -134,8 +134,8 @@ try:
     else:
         CONF_DIR=None
 
-    if 'binipv6' in CONFIG.options('daemon'):
-        BINDIPV6 = CONFIG.get('daemon', 'binipv6')
+    if 'bindipv6' in CONFIG.options('daemon'):
+        BINDIPV6 = CONFIG.get('daemon', 'bindipv6')
     else:
         BINDIPV6 = None
 
