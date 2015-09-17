@@ -134,6 +134,11 @@ try:
     else:
         CONF_DIR=None
 
+    if 'bindipv6' in CONFIG.options('daemon'):
+        BINDIPV6 = CONFIG.get('daemon', 'bindipv6')
+    else:
+        BINDIPV6 = None
+
 except Exception, e:
     print '[ERR] Unable to find config argument: %s' % e
     print traceback.format_exc(e)
@@ -322,12 +327,13 @@ WriteLog('Initialized api with modules %s' % INSTANCES.__str__())
 class BottleServer(Thread):
     """docstring for BottleServer"""
 
-    def __init__(self, bottleapp):
+    def __init__(self, bottleapp, CBINDIP):
         super(BottleServer, self).__init__()
         self.bottleapp=bottleapp
+        self.BINDIP=CBINDIP
 
     def run(self):
-        bottle.run(app=self.bottleapp, host=BINDIP, port=BINDPORT, server='paste', quiet=True)
+        bottle.run(app=self.bottleapp, host=self.BINDIP, port=BINDPORT, server='cherrypy', quiet=True)
 
 
 #   Defining loggin things
@@ -335,9 +341,13 @@ class BottleServer(Thread):
 handlers = [ TimedRotatingFileHandler(HTTPACCESSLOGFILE, 'd', 7) , ]
 loggedapp = WSGILogger(app, handlers, ApacheFormatter())
 
-       
+if BINDIPV6 != None:
+    bTh6 = BottleServer(loggedapp, BINDIPV6)
+    bTh6.daemon = True
+    bTh6.start()
+
 # while True:
-bTh = BottleServer(loggedapp)
+bTh = BottleServer(loggedapp, BINDIP)
 bTh.daemon = False
 bTh.run()
 
