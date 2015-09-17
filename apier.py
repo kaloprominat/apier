@@ -345,10 +345,13 @@ if BINDIPV6 != None:
     bTh6 = BottleServer(loggedapp, BINDIPV6)
     bTh6.daemon = True
     bTh6.start()
+    WriteLog('Apier started on [%s]:%s' % (BINDIPV6, BINDPORT) )
 
 # while True:
 bTh = BottleServer(loggedapp, BINDIP)
-bTh.daemon = False
+bTh.daemon = True
+WriteLog('Apier started on %s:%s' % (BINDIP, BINDPORT) )
 bTh.run()
+# bTh.start()
 
 
