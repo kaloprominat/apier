@@ -25,7 +25,7 @@ To start apier in debug mode and foreground, perform
 
 To start developing apier module:
 
-1. git clone https://github.yandex-team.ru/pkond/apier.git ./apier
+1. git clone https://github.com/kaloprominat/apier.git ./apier
 2. cd apier
 3. make install-apiermodule
 4. create your own module from example
