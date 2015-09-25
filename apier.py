@@ -134,6 +134,11 @@ try:
     else:
         CONF_DIR=None
 
+    if 'bindipv6' in CONFIG.options('daemon'):
+        BINDIPV6 = CONFIG.get('daemon', 'bindipv6')
+    else:
+        BINDIPV6 = None
+
 except Exception, e:
     print '[ERR] Unable to find config argument: %s' % e
     print traceback.format_exc(e)
@@ -197,24 +202,36 @@ if CONF_DIR != None and os.path.isdir(CONF_DIR):
         if not os.path.isfile(conf_file_path):
             WriteLog('Found item at %s is not a file' % conf_file_path, 'warn')
         else:
-            CONFIG_D = ConfigParser.RawConfigParser(allow_no_value=True)
-            try:
-                CONFIG_D.read(conf_file_path)
-            except Exception as e:
-                WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
-            else:
-                CONFIGS[conf_file] = {}
 
-                for section in CONFIG_D.sections():
-                    CONFIGS[conf_file][section] = {}
+            if '.conf' in conf_file_path:
 
-                    for item in CONFIG_D.items(section):
-                        CONFIGS[conf_file][section][item[0]] = item[1]
-                        
-                    # CONFIGS[conf_file][section] = map( lambda x: {x[0]: x[1]} , CONFIG_D.items(section))[0]
+                CONFIG_D = ConfigParser.RawConfigParser(allow_no_value=True)
+                try:
+                    CONFIG_D.read(conf_file_path)
+                except Exception as e:
+                    WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
+                else:
+                    CONFIGS[conf_file] = {}
 
-                WriteLog('Found and processed config %s with sections %s' % ( conf_file , CONFIG_D.sections().__str__() ), 'info' )
+                    for section in CONFIG_D.sections():
+                        CONFIGS[conf_file][section] = {}
 
+                        for item in CONFIG_D.items(section):
+                            CONFIGS[conf_file][section][item[0]] = item[1]
+
+                    WriteLog('Found and processed config %s with sections %s' % ( conf_file , CONFIG_D.sections().__str__() ), 'info' )
+
+            if '.json' in conf_file_path:
+
+                try:
+                    with open(conf_file_path) as data_file:    
+                        CONFIG_D = json.load(data_file)
+                except Exception as e:
+                    WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
+                else:
+                    CONFIGS[conf_file] = CONFIG_D
+
+                    WriteLog('Found and processed json config %s' %  conf_file, 'info' )
 
 app = bottle.Bottle()
 
@@ -310,12 +327,13 @@ WriteLog('Initialized api with modules %s' % INSTANCES.__str__())
 class BottleServer(Thread):
     """docstring for BottleServer"""
 
-    def __init__(self, bottleapp):
+    def __init__(self, bottleapp, CBINDIP):
         super(BottleServer, self).__init__()
         self.bottleapp=bottleapp
+        self.BINDIP=CBINDIP
 
     def run(self):
-        bottle.run(app=self.bottleapp, host=BINDIP, port=BINDPORT, server='paste', quiet=True)
+        bottle.run(app=self.bottleapp, host=self.BINDIP, port=BINDPORT, server='cherrypy', quiet=True)
 
 
 #   Defining loggin things
@@ -323,10 +341,20 @@ class BottleServer(Thread):
 handlers = [ TimedRotatingFileHandler(HTTPACCESSLOGFILE, 'd', 7) , ]
 loggedapp = WSGILogger(app, handlers, ApacheFormatter())
 
-       
+if BINDIPV6 != None:
+    bTh6 = BottleServer(loggedapp, BINDIPV6)
+    bTh6.daemon = True
+    bTh6.start()
+    WriteLog('Apier started on [%s]:%s' % (BINDIPV6, BINDPORT) )
+
 # while True:
-bTh = BottleServer(loggedapp)
-bTh.daemon = False
+bTh = BottleServer(loggedapp, BINDIP)
+bTh.daemon = True
+WriteLog('Apier started on %s:%s' % (BINDIP, BINDPORT) )
 bTh.run()
+# bTh.start()
+
+
+# bTh.join()
 
 
