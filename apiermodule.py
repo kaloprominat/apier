@@ -9,6 +9,8 @@ class apiermodule(object):
 
     """base class for constructing modules for apier"""
 
+    __version__ = '0.2.1'
+
     def __init__(self, **kwargs):
         super(apiermodule, self).__init__()
         
@@ -25,6 +27,13 @@ class apiermodule(object):
         self.BindRoutes()
 
         self.ResponseType = 'default'
+
+
+    def __str__(self):
+        return '<%s module (apiermodule %s)>' % (self.name, apiermodule.__version__)
+
+    def __repr__(self):
+        return self.__str__()
 
     def WriteLog(self, logstring, loglevel='info', thread=None ):
         if thread == None:
@@ -48,8 +57,14 @@ class apiermodule(object):
 
         self.operational_result = self.default_result.copy()
 
+        AnswerOptions = {
+            'ResponseType' : 'default',
+            'ResponseData' : {},
+            'ResponseHeader' : {}
+        }
+
         try:
-            Response = self.routes[Request['matched_route']]['function'](Request)
+            Response = self.routes[Request['matched_route']]['function'](Request, options=AnswerOptions)
             result = self.operational_result
         except Exception as e:
             result = self.operational_result
@@ -73,10 +88,9 @@ class apiermodule(object):
             self.WriteLog("%s %s: Module function %s returned unserializable data: '%s'" % ( Request['bottle.request'].method, Request['matched_route'] , self.routes[Request['matched_route']]['function'],e), 'error', self.name)
             self.WriteLog('%s' % traceback.format_exc(e), 'error', self.name )
 
-        if self.ResponseType == 'default':
+        if AnswerOptions['ResponseType'] == 'default':
             return result
         else:
-            self.ResponseType = 'default'
             return result['data']
 
     def BindRoutes(self):

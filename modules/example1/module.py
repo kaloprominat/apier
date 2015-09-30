@@ -64,7 +64,7 @@ class apimodule(apiermodule):
     #   This function simply returns all request object to be presented as api answer
     #
 
-    def func1(self, Request):
+    def func1(self, Request, **kwargs):
 
         #   
         #   Request dict structure example for POST request by url /test1/testname?opa=1:
@@ -152,7 +152,7 @@ class apimodule(apiermodule):
 
     #   Function func2 shows how to modify answer HTTP header, if needed
 
-    def func2(self, Request):
+    def func2(self, Request, **kwargs):
 
         #   If some conditions met some requirements, we can change HTTP status code to some other needed
         #  
