@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 
+__version__ = '0.2.1'
+
 #   Some general imports
 
 import sys
@@ -187,7 +189,7 @@ if not os.path.exists(MODULES_DIR):
     WriteLog('no modules directory found at %s' % MODULES_DIR, 'error')
     sys.exit(1)
 
-WriteLog('Apier started', 'info')
+WriteLog('Apier %s started' % __version__, 'info')
 
 CONFIGS = {}
 
@@ -345,12 +347,12 @@ if BINDIPV6 != None:
     bTh6 = BottleServer(loggedapp, BINDIPV6)
     bTh6.daemon = True
     bTh6.start()
-    WriteLog('Apier started on [%s]:%s' % (BINDIPV6, BINDPORT) )
+    WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
 
 # while True:
 bTh = BottleServer(loggedapp, BINDIP)
 bTh.daemon = True
-WriteLog('Apier started on %s:%s' % (BINDIP, BINDPORT) )
+WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
 bTh.run()
 # bTh.start()
 
