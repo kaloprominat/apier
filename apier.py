@@ -340,9 +340,11 @@ class BottleServer(Thread):
     """docstring for BottleServer"""
 
     def __init__(self, bottleapp, CBINDIP):
-        super(BottleServer, self).__init__()
+        
         self.bottleapp=bottleapp
         self.BINDIP=CBINDIP
+
+        super(BottleServer, self).__init__()
 
     def run(self):
         WriteLog('Apier %s started on [%s]:%s' % (__version__, self.BINDIP, BINDPORT) )
@@ -366,8 +368,8 @@ if BINDIP != None and BINDIPV6 != None:
     bTh = BottleServer(loggedapp, BINDIP)
     bTh.daemon = True
     # WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
-    bTh.run()
-    # bTh.start()
+    # bTh.run()
+    bTh.start()
 
 
     # bTh.join()
