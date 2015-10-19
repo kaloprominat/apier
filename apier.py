@@ -345,6 +345,7 @@ class BottleServer(Thread):
         self.BINDIP=CBINDIP
 
     def run(self):
+        WriteLog('Apier %s started on [%s]:%s' % (__version__, self.BINDIP, BINDPORT) )
         bottle.run(app=self.bottleapp, host=self.BINDIP, port=BINDPORT, server='cherrypy', quiet=True)
 
 
@@ -359,12 +360,12 @@ if BINDIP != None and BINDIPV6 != None:
         bTh6 = BottleServer(loggedapp, BINDIPV6)
         bTh6.daemon = True
         bTh6.start()
-        WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
+        # WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
 
     # while True:
     bTh = BottleServer(loggedapp, BINDIP)
     bTh.daemon = True
-    WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
+    # WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
     bTh.run()
     # bTh.start()
 
@@ -376,12 +377,12 @@ else:
     if BINDIPV6 != None:
         bTh6 = BottleServer(loggedapp, BINDIPV6)
         bTh6.daemon = True
-        WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
+        # WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
         bTh6.run()
     else:
         bTh6 = BottleServer(loggedapp, BINDIP)
         bTh6.daemon = True
-        WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
+        # WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
         bTh6.run()
 
 
