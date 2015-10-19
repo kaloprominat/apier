@@ -30,6 +30,7 @@ import bottle
 from requestlogger import WSGILogger, ApacheFormatter
 from logging.handlers import TimedRotatingFileHandler
 
+import cherrypy
 
 #   This hack is for disabling reverse DNS lookups
 
@@ -120,7 +121,13 @@ except Exception, e:
 
 try:
 
-    BINDIP=CONFIG.get('daemon', 'bindip')
+    # BINDIP=CONFIG.get('daemon', 'bindip')
+
+    if 'bindip' in CONFIG.options('daemon'):
+        BINDIP = CONFIG.get('daemon', 'bindip')
+    else:
+        BINDIP = None
+
     BINDPORT=int(CONFIG.get('daemon', 'bindport'))
 
     HTTPACCESSLOGFILE=CONFIG.get('daemon', 'httpaccesslogfile')
@@ -190,6 +197,9 @@ if not os.path.exists(MODULES_DIR):
     sys.exit(1)
 
 WriteLog('Apier %s started' % __version__, 'info')
+WriteLog('Python version: %s' % sys.version)
+WriteLog('Bottle version: %s' % bottle.__version__)
+WriteLog('cherrypy version: %s' % cherrypy.__version__)
 
 CONFIGS = {}
 
@@ -343,20 +353,35 @@ class BottleServer(Thread):
 handlers = [ TimedRotatingFileHandler(HTTPACCESSLOGFILE, 'd', 7) , ]
 loggedapp = WSGILogger(app, handlers, ApacheFormatter())
 
-if BINDIPV6 != None:
-    bTh6 = BottleServer(loggedapp, BINDIPV6)
-    bTh6.daemon = True
-    bTh6.start()
-    WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
+if BINDIP != None and BINDIPV6 != None:
 
-# while True:
-bTh = BottleServer(loggedapp, BINDIP)
-bTh.daemon = True
-WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
-bTh.run()
-# bTh.start()
+    if BINDIPV6 != None:
+        bTh6 = BottleServer(loggedapp, BINDIPV6)
+        bTh6.daemon = True
+        bTh6.start()
+        WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
+
+    # while True:
+    bTh = BottleServer(loggedapp, BINDIP)
+    bTh.daemon = True
+    WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
+    bTh.run()
+    # bTh.start()
 
 
-# bTh.join()
+    # bTh.join()
+
+else:
+
+    if BINDIPV6 != None:
+        bTh6 = BottleServer(loggedapp, BINDIPV6)
+        bTh6.daemon = True
+        WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
+        bTh6.run()
+    else:
+        bTh6 = BottleServer(loggedapp, BINDIP)
+        bTh6.daemon = True
+        WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
+        bTh6.run()
 
 
