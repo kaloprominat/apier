@@ -213,7 +213,7 @@ if BINDIPV6 == '::':
     try:
         ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
     except Exception, e:
-        WriteLog('No external ipv6 address found, using local socket at ::1', 'info')
+        WriteLog('No external ipv6 address found, using local socket at ::1', 'warn')
     else:
         BINDIPV6S.append(ipv6details[1][4][0])
 
@@ -395,12 +395,10 @@ else:
     if BINDIPV6 != None:
         bTh6 = BottleServer(loggedapp, BINDIPV6)
         bTh6.daemon = True
-        # WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
         bTh6.run()
     else:
         bTh6 = BottleServer(loggedapp, BINDIP)
         bTh6.daemon = True
-        # WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
         bTh6.run()
 
 
