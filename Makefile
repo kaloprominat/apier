@@ -17,7 +17,7 @@ venv: virtualenv
 	virtualenv --no-site-packages ./venv ;\
 	source venv/bin/activate ;\
 	pip install bottle==0.10.6 ;\
-	pip install cherrypy==3.2.2 ;\
+	pip install cherrypy;\
 	fi
 
 run: venv
