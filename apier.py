@@ -15,6 +15,7 @@ import ConfigParser     # for parsing config
 import datetime
 import signal       # for future signal support
 import traceback    # for detalaized errors in runtime
+import socket       # for bind address resolution
 
 #   For threading and options parsing
 
@@ -30,6 +31,7 @@ import bottle
 from requestlogger import WSGILogger, ApacheFormatter
 from logging.handlers import TimedRotatingFileHandler
 
+import cherrypy
 
 #   This hack is for disabling reverse DNS lookups
 
@@ -120,7 +122,13 @@ except Exception, e:
 
 try:
 
-    BINDIP=CONFIG.get('daemon', 'bindip')
+    # BINDIP=CONFIG.get('daemon', 'bindip')
+
+    if 'bindip' in CONFIG.options('daemon'):
+        BINDIP = CONFIG.get('daemon', 'bindip')
+    else:
+        BINDIP = None
+
     BINDPORT=int(CONFIG.get('daemon', 'bindport'))
 
     HTTPACCESSLOGFILE=CONFIG.get('daemon', 'httpaccesslogfile')
@@ -189,7 +197,28 @@ if not os.path.exists(MODULES_DIR):
     WriteLog('no modules directory found at %s' % MODULES_DIR, 'error')
     sys.exit(1)
 
-WriteLog('Apier %s started' % __version__, 'info')
+WriteLog('Apier version: %s' % __version__, 'info')
+WriteLog('Python version: %s' % sys.version, 'info')
+WriteLog('Bottle version: %s' % bottle.__version__)
+WriteLog('cherrypy version: %s' % cherrypy.__version__)
+
+#   This part is for determining ipv6 adresses to bind
+
+BINDIPV6S = []
+
+if BINDIPV6 == '::':
+
+    BINDIPV6S.append('::1')
+
+    try:
+        ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
+    except Exception, e:
+        WriteLog('No external ipv6 address found, using local socket at ::1', 'warn')
+    else:
+        BINDIPV6S.append(ipv6details[1][4][0])
+
+else:
+    BINDIPV6S.append(BINDIPV6)
 
 CONFIGS = {}
 
@@ -330,11 +359,14 @@ class BottleServer(Thread):
     """docstring for BottleServer"""
 
     def __init__(self, bottleapp, CBINDIP):
-        super(BottleServer, self).__init__()
+        
         self.bottleapp=bottleapp
         self.BINDIP=CBINDIP
 
+        super(BottleServer, self).__init__()
+
     def run(self):
+        WriteLog('Apier %s started on [%s]:%s' % (__version__, self.BINDIP, BINDPORT) )
         bottle.run(app=self.bottleapp, host=self.BINDIP, port=BINDPORT, server='cherrypy', quiet=True)
 
 
@@ -343,20 +375,30 @@ class BottleServer(Thread):
 handlers = [ TimedRotatingFileHandler(HTTPACCESSLOGFILE, 'd', 7) , ]
 loggedapp = WSGILogger(app, handlers, ApacheFormatter())
 
-if BINDIPV6 != None:
-    bTh6 = BottleServer(loggedapp, BINDIPV6)
-    bTh6.daemon = True
-    bTh6.start()
-    WriteLog('Apier %s started on [%s]:%s' % (__version__, BINDIPV6, BINDPORT) )
+if BINDIP != None and BINDIPV6 != None:
 
-# while True:
-bTh = BottleServer(loggedapp, BINDIP)
-bTh.daemon = True
-WriteLog('Apier %s started on %s:%s' % (__version__, BINDIP, BINDPORT) )
-bTh.run()
-# bTh.start()
+    if BINDIPV6 != None:
+
+        for ipv6 in BINDIPV6S:
+            bTh6 = BottleServer(loggedapp, ipv6)
+            bTh6.daemon = True
+            bTh6.start()
+
+    bTh = BottleServer(loggedapp, BINDIP)
+    bTh.daemon = True
+
+    bTh.run()
 
 
-# bTh.join()
+else:
+
+    if BINDIPV6 != None:
+        bTh6 = BottleServer(loggedapp, BINDIPV6)
+        bTh6.daemon = True
+        bTh6.run()
+    else:
+        bTh6 = BottleServer(loggedapp, BINDIP)
+        bTh6.daemon = True
+        bTh6.run()
 
 

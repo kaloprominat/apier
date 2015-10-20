@@ -16,7 +16,7 @@ venv: virtualenv
 	if [ ! -d ./venv ]; then \
 	virtualenv --no-site-packages ./venv ;\
 	source venv/bin/activate ;\
-	pip install bottle ;\
+	pip install bottle==0.10.6 ;\
 	pip install cherrypy ;\
 	fi
 
