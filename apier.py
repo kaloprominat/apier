@@ -206,7 +206,7 @@ WriteLog('cherrypy version: %s' % cherrypy.__version__)
 
 BINDIPV6S = []
 
-if BINDIPV6 == '::':
+if BINDIPV6 == '::' :
 
     BINDIPV6S.append('::1')
 
@@ -214,6 +214,16 @@ if BINDIPV6 == '::':
         ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
     except Exception, e:
         WriteLog('No external ipv6 address found, using local socket at ::1', 'warn')
+    else:
+        BINDIPV6S.append(ipv6details[1][4][0])
+
+elif BINDIPV6 == 'ext' :
+
+    try:
+        ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
+    except Exception, e:
+        WriteLog('No external ipv6 address found, but _ext_ address specified, aborting', 'error')
+        raise e
     else:
         BINDIPV6S.append(ipv6details[1][4][0])
 
