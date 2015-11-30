@@ -27,14 +27,14 @@ class apimodule(apiermodule):
 
         super(apimodule, apimodule).__init__(self, **kwargs)
 
-    def func1(self, Request):
+    def func1(self, Request, **kwargs):
 
         Request['bottle.request'] = None
         Request['bottle.response'] = None
 
         return Request
 
-    def func2(self, Request):
+    def func2(self, Request, **kwargs):
 
         if Request['variables']['name'] == 'specialname':
             self.ModifyResponseHeader({'status':201})
