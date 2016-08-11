@@ -376,8 +376,15 @@ class BottleServer(Thread):
         super(BottleServer, self).__init__()
 
     def run(self):
+
+        from geventwebsocket.handler import WebSocketHandler
+        from gevent.pywsgi import WSGIServer
+
         WriteLog('Apier %s started on [%s]:%s' % (__version__, self.BINDIP, BINDPORT) )
-        bottle.run(app=self.bottleapp, host=self.BINDIP, port=BINDPORT, server='cherrypy', quiet=True)
+        # bottle.run(app=self.bottleapp, host=self.BINDIP, port=BINDPORT, server='cherrypy', handler_class=WebSocketHandler, quiet=True)
+
+        server = WSGIServer((self.BINDIP, BINDPORT), app, handler_class=WebSocketHandler)
+        server.serve_forever()
 
 
 #   Defining loggin things
