@@ -18,6 +18,8 @@ venv: virtualenv
 	source venv/bin/activate ;\
 	pip install bottle==0.10.6 ;\
 	pip install cherrypy ;\
+	pip install gevent ;\
+	pip install gevent-websocket ;\
 	fi
 
 run: venv

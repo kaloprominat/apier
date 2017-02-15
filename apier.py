@@ -1,87 +1,52 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
-__version__ = '0.2.1'
-
-#   Some general imports
-
+# common dependencies
+import signal
+import logging
 import sys
-import thread   # for threading purposes  
-import imp      # for loading modules dynamically
 import os
-import json
-import ConfigParser     # for parsing config
-import datetime
-import signal       # for future signal support
-import traceback    # for detalaized errors in runtime
-import socket       # for bind address resolution
+import socket
+import imp
+import time
 
-#   For threading and options parsing
-
-from threading import Thread
-from optparse import OptionParser
-
-# main web server framework
-
+# web framework
 import bottle
 
-#   This part for http access logging
-
-from requestlogger import WSGILogger, ApacheFormatter
-from logging.handlers import TimedRotatingFileHandler
-
+# wsgi server
 import cherrypy
+from cherrypy.wsgiserver import CherryPyWSGIServer
 
-#   This hack is for disabling reverse DNS lookups
+# threading
+from threading import Thread
 
-__import__('BaseHTTPServer').BaseHTTPRequestHandler.address_string = lambda x:x.client_address[0]
-
+# configs & options
+import ConfigParser
+from optparse import OptionParser
 
 #   This is for disabling warnings
-
 import warnings
 warnings.filterwarnings("ignore")
 
-#   Class for future colorizing
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-#   Logger class for http server
-
-class Logger(object):
-    def __init__(self, filename="./http.log", foreground=False):
-        self.foreground = foreground
-        self.terminal = sys.stdout
-        self.log = open(filename, "a")
-
-    def write(self, message):
-        if self.foreground:
-            self.terminal.write(message)
-        self.log.write(message)
-        self.terminal.flush()
-        self.log.flush()
+__version__ = '1.0.1'
 
 
-#   Global loglevels
+logging.basicConfig(format='%(asctime)s [%(name)s]\t%(levelname)s\t%(message)s',
+                    level=logging.DEBUG)
+log = logging.getLogger(__name__ if __name__ != '__main__' else 'apier')
+
 
 LOGLEVELS = {
-    "silent"    : 0,
-    "error"     : 1,
-    "warn"      : 2,
-    "info"      : 3,
-    "debug"     : 4
+    "silent"    : logging.NOTSET,
+    "error"     : logging.ERROR,
+    "warn"      : logging.WARN,
+    "info"      : logging.INFO,
+    "debug"     : logging.DEBUG
 }
 
-LOGLEVEL = LOGLEVELS['debug']
+
+# Options parsing
 
 PARSER = OptionParser()
 
@@ -106,43 +71,49 @@ PARSER.add_option('-l', '--loglevel', dest='forcedloglevel',
 
 OPTIONS, ARGS = PARSER.parse_args()
 
-CONFIGFILE = OPTIONS.configfile
+# Configuration file
 
 CONFIG = ConfigParser.RawConfigParser(allow_no_value=True)
 
+log.debug('Config file: %s', OPTIONS.configfile)
 
-#   Trying read config file
-
-try:
-    CONFIG.read(CONFIGFILE)
-except Exception, e:
-    print '[ERR] Error loading config file: %s' % e
-    print traceback.format_exc(e)
+if not os.path.exists(OPTIONS.configfile):
+    log.error('Config file does not exists: %s', OPTIONS.configfile)
     sys.exit(1)
 
 try:
+    CONFIG.read(OPTIONS.configfile)
+except Exception, e:
+    log.error('Error loading config file: %s', e, exc_info=1)
+    sys.exit(1)
 
-    # BINDIP=CONFIG.get('daemon', 'bindip')
+# Configuration file options
 
+try:
     if 'bindip' in CONFIG.options('daemon'):
         BINDIP = CONFIG.get('daemon', 'bindip')
     else:
         BINDIP = None
 
-    BINDPORT=int(CONFIG.get('daemon', 'bindport'))
+    BINDPORT = int(CONFIG.get('daemon', 'bindport'))
 
-    HTTPACCESSLOGFILE=CONFIG.get('daemon', 'httpaccesslogfile')
-    LOGFILE=CONFIG.get('daemon', 'logfile')
+    HTTPACCESSLOGFILE = CONFIG.get('daemon', 'httpaccesslogfile')
+    LOGFILE = CONFIG.get('daemon', 'logfile')
 
-    LOGLEVEL=LOGLEVELS[CONFIG.get('daemon', 'loglevel')]
+    LOGLEVEL = LOGLEVELS[CONFIG.get('daemon', 'loglevel')]
 
-    MODULES_DIR=CONFIG.get('daemon', 'modules_dir')
+    MODULES_DIR = CONFIG.get('daemon', 'modules_dir')
+
+    if 'reload_modules' in CONFIG.options('daemon'):
+        RELOAD_MODULES = CONFIG.get('daemon', 'reload_modules')
+    else:
+        RELOAD_MODULES = 0
 
     if 'conf_dir' in CONFIG.options('daemon'):
 
-        CONF_DIR=CONFIG.get('daemon', 'conf_dir')
+        CONF_DIR = CONFIG.get('daemon', 'conf_dir')
     else:
-        CONF_DIR=None
+        CONF_DIR = None
 
     if 'bindipv6' in CONFIG.options('daemon'):
         BINDIPV6 = CONFIG.get('daemon', 'bindipv6')
@@ -150,265 +121,294 @@ try:
         BINDIPV6 = None
 
 except Exception, e:
-    print '[ERR] Unable to find config argument: %s' % e
-    print traceback.format_exc(e)
-    sys.exit(2)
-
-if (OPTIONS.testconfig):
-    print '[OK] Config seems to be valid'
-    sys.exit(0)
-
-
-sys.stderr = Logger(LOGFILE, OPTIONS.foreground)
-
-if OPTIONS.forcedloglevel != None:
-    LOGLEVEL=LOGLEVELS[OPTIONS.forcedloglevel]
-
-
-def WriteLog(logstring, loglevel='info', thread='main'):
-    global LOGFILE
-    global OPTIONS
-    global LOGLEVEL
-    global LOGLEVELS
-
-    dt = datetime.datetime.now()
-
-    p_logstring = "%s[%s]: <%s> %s \n" % (dt.strftime("%Y-%m-%d %H:%M:%S"), loglevel.upper(), thread, logstring )
-
-
-    if LOGLEVELS[loglevel.lower()] <= LOGLEVEL:
-
-        plog = open(LOGFILE,'a')
-        plog.write(p_logstring)
-        plog.close()
-
-        if OPTIONS.foreground or loglevel.upper() == 'ERROR' :
-            print p_logstring,
-            sys.stdout.flush()
-            # sys.stderr.flush()
-
-    if thread != 'main':
-        plog = open( '%s/%s.log' % ( os.path.dirname(LOGFILE), thread ), 'a')
-        plog.write(p_logstring)
-        plog.close()
-
-
-if not os.path.exists(MODULES_DIR):
-    WriteLog('no modules directory found at %s' % MODULES_DIR, 'error')
+    log.error('Unable to find config argument: %s', e, exc_info=1)
     sys.exit(1)
 
-WriteLog('Apier version: %s' % __version__, 'info')
-WriteLog('Python version: %s' % sys.version, 'info')
-WriteLog('Bottle version: %s' % bottle.__version__)
-WriteLog('cherrypy version: %s' % cherrypy.__version__)
+if (OPTIONS.testconfig):
+    log.info('[OK] Config seems to be valid')
+    sys.exit(0)
 
-#   This part is for determining ipv6 adresses to bind
+if OPTIONS.forcedloglevel is not None:
+    LOGLEVEL = LOGLEVELS[OPTIONS.forcedloglevel]
 
-BINDIPV6S = []
+log.setLevel(LOGLEVEL)
 
-if BINDIPV6 == '::' :
+# modules dir
 
-    BINDIPV6S.append('::1')
+if not os.path.exists(MODULES_DIR):
+    log.error('No modules directory found at %s', MODULES_DIR)
+    sys.exit(1)
 
-    try:
-        ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
-    except Exception, e:
-        WriteLog('No external ipv6 address found, using local socket at ::1', 'warn')
-    else:
-        BINDIPV6S.append(ipv6details[1][4][0])
 
-elif BINDIPV6 == 'ext' :
+# Start here
 
-    try:
-        ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
-    except Exception, e:
-        WriteLog('No external ipv6 address found, but _ext_ address specified, aborting', 'error')
-        raise e
-    else:
-        BINDIPV6S.append(ipv6details[1][4][0])
+log.info('Apier version: %s', __version__)
+log.info('Python version: %s', sys.version.replace("\n", " "))
+log.info('Bottle version: %s', bottle.__version__)
+log.info('Cherrypy version: %s', cherrypy.__version__)
 
-else:
-    BINDIPV6S.append(BINDIPV6)
+log.info('Starting apier...')
 
-CONFIGS = {}
 
-#   Listing conf.d directory
+# Determining bind interfaces
 
-if CONF_DIR != None and os.path.isdir(CONF_DIR):
+def bind_addresses():
 
-    WriteLog('Found conf.d directory at path %s' % CONF_DIR, 'info')
+    global BINDADDRESSES
 
-    for conf_file in os.listdir(CONF_DIR):
-        conf_file_path = "%s/%s" % (CONF_DIR, conf_file)
-        if not os.path.isfile(conf_file_path):
-            WriteLog('Found item at %s is not a file' % conf_file_path, 'warn')
+    BINDADDRESSES = [BINDIP]
+
+    if BINDIPV6 == '::' :
+        BINDADDRESSES.append('::1')
+
+        try:
+            ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
+        except Exception, e:
+            log.warn('No external ipv6 address found, using local socket at ::1')
         else:
+            BINDADDRESSES.append(ipv6details[1][4][0])
 
-            if '.conf' in conf_file_path:
+    elif BINDIPV6 == 'ext' :
 
-                CONFIG_D = ConfigParser.RawConfigParser(allow_no_value=True)
+        try:
+            ipv6details = socket.getaddrinfo(socket.getfqdn(), None, socket.AF_INET6)
+        except Exception, e:
+            log.error('No external ipv6 address found, but _ext_ address specified, aborting')
+            raise e
+        else:
+            BINDADDRESSES.append(ipv6details[1][4][0])
+
+    else:
+        if BINDIPV6 is not None:
+            BINDADDRESSES.append(BINDIPV6)
+
+    log.info('Bind sockets: %s:%s', BINDADDRESSES, BINDPORT)
+
+
+def reloadModules():
+
+    global app
+    global APIER_MODULES
+
+    log.debug('Looking for modules at path %s', MODULES_DIR)
+
+    for module_dir in os.listdir(MODULES_DIR):
+        module_dir_path = "%s/%s" % (MODULES_DIR, module_dir)
+        if os.path.isdir(module_dir_path):
+            # log.debug('Found module dir %s', module_dir_path)
+            module_path = "%s/%s/module.py" % (MODULES_DIR, module_dir)
+            if os.path.exists(module_path):
+                log.debug('Found module at path %s', module_path)
+                imp_module = None
                 try:
-                    CONFIG_D.read(conf_file_path)
+                    imp_module = imp.load_source(module_path, module_path)
                 except Exception as e:
-                    WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
+                    log.error('Error loading module at path %s : %s', module_path, e, exc_info=1)
                 else:
-                    CONFIGS[conf_file] = {}
-
-                    for section in CONFIG_D.sections():
-                        CONFIGS[conf_file][section] = {}
-
-                        for item in CONFIG_D.items(section):
-                            CONFIGS[conf_file][section][item[0]] = item[1]
-
-                    WriteLog('Found and processed config %s with sections %s' % ( conf_file , CONFIG_D.sections().__str__() ), 'info' )
-
-            if '.json' in conf_file_path:
-
-                try:
-                    with open(conf_file_path) as data_file:    
-                        CONFIG_D = json.load(data_file)
-                except Exception as e:
-                    WriteLog('Error "%s" parsing config at "%s"' % ( e.__str__().replace("\n", " ") , conf_file_path ), 'error' )
-                else:
-                    CONFIGS[conf_file] = CONFIG_D
-
-                    WriteLog('Found and processed json config %s' %  conf_file, 'info' )
-
-app = bottle.Bottle()
-
-MODULES=[]
-MOD_ROUTES = {}
-MOD_ROUTES_ANY = {}
-
-WriteLog('Looking for modules at path %s' % MODULES_DIR, 'info')
-
-for module_dir in os.listdir(MODULES_DIR):
-    module_dir_path = "%s/%s" % (MODULES_DIR, module_dir)
-    if os.path.isdir(module_dir_path):
-        WriteLog('Found module dir %s' % module_dir_path, 'debug')
-        module_path = "%s/%s/module.py" %(MODULES_DIR, module_dir)
-        if os.path.exists(module_path):
-            WriteLog('Found module at path %s' % module_path, 'debug')
-            imp_module = None
-            try:
-                imp_module = imp.load_source(module_path, module_path)
-            except Exception as e:
-                WriteLog('Error loading module at path %s : %s' % (module_path, e), 'error')
-                WriteLog('%s' % traceback.format_exc(e), 'error' )
-            else:
-                if not hasattr(imp_module, 'name'):
-                    WriteLog('Malformed module at %s: no name atribute presented' % module_path, 'error' )
-                    continue
-
-                if not hasattr(imp_module, 'routes'):
-                    WriteLog('Malformed module at %s: no rotues atribute presented' % module_path, 'error' )
-                    continue
-
-                to_add = True
-
-                for route in imp_module.routes:
-                    if MOD_ROUTES_ANY.has_key(route):
-                        WriteLog('Unable to accept module \'%s\' route \'%s\', because it conflicts with module \'%\'s method ANY, EXCLUDING module from initialization' % (imp_module.name, route, MOD_ROUTES_ANY[route]), 'error')
-                        to_add = False
+                    if not hasattr(imp_module, 'name'):
+                        log.error('Malformed module at %s: no name atribute presented', module_path)
                         continue
 
-                    if MOD_ROUTES.has_key((route, imp_module.routes[route]['method'])):
-                        WriteLog('Unable to accept module \'%s\' route \'%s\' with method \'%s\', because it conflicts with module \'%s\', EXCLUDING module from initialization' %(imp_module.name, route, imp_module.routes[route]['method'], MOD_ROUTES[(route, imp_module.routes[route]['method'])]) , 'error')
-                        to_add = False
+                    if not hasattr(imp_module, 'routes'):
+                        log.error('Malformed module at %s: no rotues atribute presented', module_path)
                         continue
 
-                    if imp_module.routes[route]['method'].upper() == 'ANY':
-                        for m_route, m_method in MOD_ROUTES:
-                            if m_route == route:
-                                WriteLog('Unable to accept module \'%s\' route \'%s\' ANY method, because it conflicts with module \'%s\' method \'%s\', EXCLUDING module from initialization' % (imp_module.name, route, MOD_ROUTES[(m_route, m_method)], m_method ),'error' )
-                                to_add = False
-                                continue
+                    to_add = True
+
+                    # for route in imp_module.routes:
+                    #     if MOD_ROUTES_ANY.has_key(route):
+                    #         WriteLog('Unable to accept module \'%s\' route \'%s\', because it conflicts with module \'%\'s method ANY, EXCLUDING module from initialization' % (imp_module.name, route, MOD_ROUTES_ANY[route]), 'error')
+                    #         to_add = False
+                    #         continue
+
+                    #     if MOD_ROUTES.has_key((route, imp_module.routes[route]['method'])):
+                    #         WriteLog('Unable to accept module \'%s\' route \'%s\' with method \'%s\', because it conflicts with module \'%s\', EXCLUDING module from initialization' %(imp_module.name, route, imp_module.routes[route]['method'], MOD_ROUTES[(route, imp_module.routes[route]['method'])]) , 'error')
+                    #         to_add = False
+                    #         continue
+
+                    #     if imp_module.routes[route]['method'].upper() == 'ANY':
+                    #         for m_route, m_method in MOD_ROUTES:
+                    #             if m_route == route:
+                    #                 WriteLog('Unable to accept module \'%s\' route \'%s\' ANY method, because it conflicts with module \'%s\' method \'%s\', EXCLUDING module from initialization' % (imp_module.name, route, MOD_ROUTES[(m_route, m_method)], m_method ),'error' )
+                    #                 to_add = False
+                    #                 continue
+
+                    #     if to_add:
+                    #         MOD_ROUTES[(route, imp_module.routes[route]['method'])] = imp_module.name
 
                     if to_add:
-                        MOD_ROUTES[(route, imp_module.routes[route]['method'])] = imp_module.name
+                        imp_module = imp.load_source(imp_module.name, module_path)
 
-                if to_add:
-                    imp_module = imp.load_source(imp_module.name, module_path)
+                        if imp_module.name not in APIER_MODULES:
 
-                    MODULES.append( {"module_name":imp_module.name , "module" : imp_module } )
+                            APIER_MODULES[imp_module.name] = {
+                                'module_name'   : imp_module.name,
+                                'module'        : imp_module,
+                                'path'          : module_path.replace('.pyc','.py'),
+                                'instance'      : None,
+                                'mtime'         : long(os.path.getmtime(module_path.replace('.pyc','.py')))
+                            }
 
-                    WriteLog('loaded module %s at %s' % (imp_module.name, module_path) , 'info' )
+                        else:
+
+                            APIER_MODULES[imp_module.name]['module'] = imp_module
+                            APIER_MODULES[imp_module.name]['instance'] = None
+                            APIER_MODULES[imp_module.name]['mtime'] = long(os.path.getmtime(module_path.replace('.pyc','.py')))
+
+                        log.info('Loaded module %s at %s', imp_module.name, module_path)
 
 
-INSTANCES = []
+def initModules():
+
+    global app
+    global APIER_MODULES
+
+    for module_name in APIER_MODULES:
+
+        module = APIER_MODULES[module_name]
+
+        try:
+
+            instance = module['module'].apimodule(bottleapp=app, loglevel=LOGLEVEL)
+
+        except Exception as e:
+
+            log.error('Error init %s: %s', module['module'], e, exc_info=1)
+            APIER_MODULES[module_name]['instance'] = None
+
+        else:
+
+            log.info('Init %s', module['module'])
+
+            APIER_MODULES[module_name]['instance'] = instance
+
+    log.info('Init app with %s', [ APIER_MODULES[x]['instance'] for x in APIER_MODULES ] )
 
 
-for module in MODULES:
+def createApp():
+    global app
+    app = bottle.Bottle()
+    log.debug('Created bottle app %s', app)
 
+
+def createServers():
+    global app
+    global BINDADDRESSES
+    svs = []
+    for bip in BINDADDRESSES:
+        s = CherryPyWSGIServer((bip, BINDPORT), app)
+        svs.append(s)
+    return svs
+
+
+def run_server(s):
     try:
-
-        instance = module['module'].apimodule(bottleapp=app, WriteLog=WriteLog, configs = CONFIGS)
-
-    except Exception as e:
-
-        WriteLog('error initializing module %s: %s' % (module['module'], e), 'error')
-        WriteLog('%s' % traceback.format_exc(e), 'error' )
-
-    else:
-
-        WriteLog('successfuly initialized module %s' % module['module'])
-
-        INSTANCES.append(instance)
+        log.debug('Starting %s', s)
+        s.start()
+    except Exception, e:
+        log.error('Failed to start server %s:%s', s, e, exc_info=1)
 
 
-WriteLog('Initialized api with modules %s' % INSTANCES.__str__())
+def start_servers():
+
+    global SERVERS
+
+    for s in SERVERS:
+        st = Thread(target=run_server, args=(s,))
+        st.daemon = True
+        st.start()
 
 
-# def signal_handle(signum, frame):
-    # print 'signal %s and frame %s' % (signum, frame)
+def stop_servers():
+
+    global SERVERS
+
+    for s in SERVERS:
+        sr = s.ready
+        s.stop()
+        if sr:
+            log.debug('%s stoped', s)
 
 
-# signal.signal(signal.SIGUSR1, signal_handle)
+def restart_servers():
+    stop_servers()
+    start_servers()
 
-class BottleServer(Thread):
-    """docstring for BottleServer"""
 
-    def __init__(self, bottleapp, CBINDIP):
-        
-        self.bottleapp=bottleapp
-        self.BINDIP=CBINDIP
+def startServers(svs):
+    global SERVERS
+    stop_servers()
+    SERVERS = svs
+    start_servers()
 
-        super(BottleServer, self).__init__()
+
+# Global variables
+
+SERVERS = []
+APIER_MODULES = {}
+BINDADDRESSES = []
+
+app = None
+
+
+# refresing thread
+
+class ModulesRefreshThread(Thread):
+
+    def __init__(self):
+
+        super(ModulesRefreshThread, self).__init__()
 
     def run(self):
-        WriteLog('Apier %s started on [%s]:%s' % (__version__, self.BINDIP, BINDPORT) )
-        bottle.run(app=self.bottleapp, host=self.BINDIP, port=BINDPORT, server='cherrypy', quiet=True)
+
+        global APIER_MODULES
+
+        log.info('Module reloading thread started')
+
+        while True:
+            for module_name in APIER_MODULES:
+                module = APIER_MODULES[module_name]
+                mtime = long(os.path.getmtime(module['path']))
+
+                if module['mtime'] != mtime:
+                    log.info('Reloading modules %s' % module['module'])
+
+                    reloadModules()
+                    createApp()
+                    initModules()
+                    startServers(createServers())
+
+            time.sleep(1)
 
 
-#   Defining loggin things
+def sigint_handle(signum, frame):
 
-handlers = [ TimedRotatingFileHandler(HTTPACCESSLOGFILE, 'd', 7) , ]
-loggedapp = WSGILogger(app, handlers, ApacheFormatter())
-
-if BINDIP != None and BINDIPV6 != None:
-
-    if BINDIPV6 != None:
-
-        for ipv6 in BINDIPV6S:
-            bTh6 = BottleServer(loggedapp, ipv6)
-            bTh6.daemon = True
-            bTh6.start()
-
-    bTh = BottleServer(loggedapp, BINDIP)
-    bTh.daemon = True
-
-    bTh.run()
+    log.warn('SIGINT received, stopping...')
+    stop_servers()
 
 
-else:
+signal.signal(signal.SIGINT, sigint_handle)
+signal.signal(signal.SIGABRT, sigint_handle)
+signal.signal(signal.SIGTERM, sigint_handle)
+signal.signal(signal.SIGUSR1, sigint_handle)
 
-    if BINDIPV6 != None:
-        bTh6 = BottleServer(loggedapp, BINDIPV6)
-        bTh6.daemon = True
-        bTh6.run()
-    else:
-        bTh6 = BottleServer(loggedapp, BINDIP)
-        bTh6.daemon = True
-        bTh6.run()
+if __name__ == '__main__':
 
+    # main loop here
 
+    __name__ = 'apier'
+
+    bind_addresses()
+    reloadModules()
+    createApp()
+    initModules()
+
+    startServers(createServers())
+
+    if int(RELOAD_MODULES) == 1:
+
+        mrt = ModulesRefreshThread()
+        mrt.daemon = True
+        mrt.start()
+
+    signal.pause()

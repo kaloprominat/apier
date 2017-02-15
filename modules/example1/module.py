@@ -3,7 +3,8 @@
 
 #   Importing apiermodule to be userd as BASECLASS
 
-from apiermodule import apiermodule
+from apiermodule import apiermodule, apiermoduleException
+import json
 
 #   Giving name for our python module
 
@@ -16,7 +17,12 @@ name = 'example1'
 routes = {
         '/test1'    :   {'method'   :   'GET' },
         '/test1/'   :   {'method'   :   'POST'},
-        '/test1/<name>'   :   {'method'   :   'ANY'}
+        '/test1/<name>'   :   {'method'   :   'ANY'},
+        '/ok' : {'method': 'ANY'},
+        '/err' : {'method': 'ANY'},
+        '/http500' : {'method': 'ANY'},
+        '/json' : {'method': 'ANY'},
+        '/list' : {'method': 'ANY'}
     
         }
 
@@ -36,11 +42,18 @@ class apimodule(apiermodule):
         self.name = name
         self.routes = routes
 
+        self.base_url = '/test'
 
         #   And there we shoud map all routes to functions, which will be processing requests
 
         self.routes['/test1']['function'] = self.func1
         self.routes['/test1/']['function'] = self.func1
+
+        self.routes['/ok']['function'] = self.ok
+        self.routes['/err']['function'] = self.err
+        self.routes['/http500']['function'] = self.http500
+        self.routes['/json']['function'] = self.json
+        self.routes['/list']['function'] = self.list
 
         #   Pay some attention on this part
         #   You are able to use bottle-style variables at path, like /api/object/<name>
@@ -58,11 +71,47 @@ class apimodule(apiermodule):
 
         self.WriteLog('configs: %s' % self.configs.__str__(), 'info', self.name)
 
+        # a = 0
+        # b = 1 / a
+
+        # self.return_handler = self.BasicReturner
+        # self.error_handler = self.error
+        # self.return_handler = self.JsonReturner
+        # self.return_handler = self.JsonStatusReturner
+        # self.return_handler = self.JsonStatusReturner2
+        # self.return_handler = self.XmlReturner
+
     #   First function func1 process requests for first to paths /test1 and /test1/
     #   baseclass apiermodule passes Request dict to function with all request data
     #
     #   This function simply returns all request object to be presented as api answer
     #
+    def error(self, **kwargs):
+
+        self.WriteLog('cathed error: %s' % kwargs)
+
+        return kwargs.get('response')
+
+    def ok(self, request, **kwargs):
+        self.WriteLog('ok function')
+        return 'ok'
+
+    def json(self, request, **kwargs):
+        self.WriteLog('json function')
+        return {'data':'ok'}
+
+    def list(self, request, **kwargs):
+        return [1,2,3,4]
+
+    def err(self, request, **kwargs):
+        # a = 1 / 0
+        raise apiermoduleException(code=1, message='some error', debug={1:2, '3':'4'}, status = 1)
+
+    def http500(self, request, **kwargs):
+        response = kwargs.get('response')
+        response['http_code'] = 409
+
+        return 'conflict!'
 
     def func1(self, Request, **kwargs):
 
@@ -130,9 +179,10 @@ class apimodule(apiermodule):
         #
         #   so here we striping them from returned variable
 
-        Request['bottle.request'] = None
-        Request['bottle.response'] = None
+        # Request['bottle.request'] = None
+        # Request['bottle.response'] = None
 
+        # raise apiermoduleException(code=1, message='my own application error')
 
         return Request
 
@@ -162,9 +212,20 @@ class apimodule(apiermodule):
         #   headers - is a list, containing tuples of header - value for http response.
 
         if Request['variables']['name'] == 'specialname':
-            self.ModifyResponseHeader({'status':201})
+            self.ModifyResponseHeader({'status': 201})
 
-        return 'OK: 201 created'
+
+        self.WriteLog('name: %s' % Request['variables']['name'], 'info')
+
+        # if int(Request['variables']['name']) == 0:
+            # raise apiermoduleException(code=3, message='division by zero')
+
+
+        # raise apiermoduleException(code=1, message=2)
+        raise apiermoduleException(code=3, message='division by zero')
+
+        # return {'1':{'1':'2','2':'3',3:4/0}}
+        return {'answer' : 'OK: 201 created'}
 
         #   Http response will be:
         #
