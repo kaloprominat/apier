@@ -34,14 +34,12 @@ class apiermodule(object):
 
         super(apiermodule, self).__init__()
 
-        self.name = 'apiermodule'
-
         self.bottleapp = kwargs.get('bottleapp')
         self.apier_configs = kwargs.get('configs')
 
         self.loglevel = kwargs.get('loglevel', logging.DEBUG)
-        self.logger = logging.getLogger(self.name)
-        self.logger.setLevel(self.loglevel)
+        # self.logger = logging.getLogger(self.name)
+        # self.logger.setLevel(self.loglevel)
 
         self.return_handler = self.JsonStatusReturner
         self.error_handler = self._Returner
@@ -189,6 +187,9 @@ class apiermodule(object):
         return self.__str__()
 
     def WriteLog(self, logstring, loglevel='info', thread=None ):
+        if not hasattr(self, 'logger'):
+            self.logger = logging.getLogger(self.name)
+            self.logger.setLevel(self.loglevel)
         self.logger.__getattribute__(loglevel)(logstring)
 
     def ProccessRoute(self, **kwargs):
