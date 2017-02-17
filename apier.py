@@ -270,6 +270,7 @@ def initModules():
         try:
 
             instance = module['module'].apimodule(bottleapp=app, loglevel=LOGLEVEL)
+            instance.after_init()
 
         except Exception as e:
 
