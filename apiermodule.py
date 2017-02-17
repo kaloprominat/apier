@@ -34,6 +34,8 @@ class apiermodule(object):
 
         super(apiermodule, self).__init__()
 
+        self.name = 'apiermodule'
+
         self.bottleapp = kwargs.get('bottleapp')
         self.apier_configs = kwargs.get('configs')
 
